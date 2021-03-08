@@ -11,7 +11,7 @@
 #ifdef _MSC_VER
 #include <windows.h>
 #else
-#include <sys/time.h>
+#include <time.h>
 #include <unistd.h>
 #endif
 
@@ -54,11 +54,9 @@ prophile_t prophile_create(prophile_opt_t opt, ...) {
 			pro->callback = va_arg(args, prophile_callback_t);
 		}
 
-		else {
-			// TODO: Handle error better...
-
-			break;
-		}
+		// A bad option was given, so just stop trying and go with whatever has
+		// already been set (if anything).
+		else break;
 
 		o = va_arg(args, prophile_opt_t);
 	}
@@ -148,28 +146,17 @@ prophile_tick_t prophile_tick(prophile_unit_t u) {
 
 	QueryPerformanceCounter(&tick);
 
-	if(u == PROPHILE_NSEC) {
-		t = tick.QuadPart * (1.0e9 / (prophile_tick_t)(FREQ.QuadPart));
-	}
+	if(u == PROPHILE_NSEC) t = tick.QuadPart * (1.0e9 / (prophile_tick_t)(FREQ.QuadPart));
 
-	else if(u == PROPHILE_USEC) {
-		t = tick.QuadPart * (1.0e6 / (prophile_tick_t)(FREQ.QuadPart));
-	}
+	else if(u == PROPHILE_USEC) t = tick.QuadPart * (1.0e6 / (prophile_tick_t)(FREQ.QuadPart));
 
-	else if(u == PROPHILE_MSEC) {
-		t = tick.QuadPart * (1.0e3 / (prophile_tick_t)(FREQ.QuadPart));
-	}
+	else if(u == PROPHILE_MSEC) t = tick.QuadPart * (1.0e3 / (prophile_tick_t)(FREQ.QuadPart));
 
-	else if(u == PROPHILE_SEC) {
-		t = tick.QuadPart * (1.0 / (prophile_tick_t)(FREQ.QuadPart));
-	}
-
-	else {
-		// TODO: Handle errors better...
-	}
+	else if(u == PROPHILE_SEC) t = tick.QuadPart * (1.0 / (prophile_tick_t)(FREQ.QuadPart));
 
 #else
 
+	/* // This is the implementation using gettimeofday().
 	struct timeval tick = {0, 0};
 
 	gettimeofday(&tick, NULL);
@@ -180,7 +167,7 @@ prophile_tick_t prophile_tick(prophile_unit_t u) {
 	}
 
 	else if(u == PROPHILE_USEC) {
-		t = tick.tv_sec * 1000.0;
+		t = tick.tv_sec * 1000000.0;
 		t += tick.tv_usec;
 	}
 
@@ -192,10 +179,31 @@ prophile_tick_t prophile_tick(prophile_unit_t u) {
 	else if(u == PROPHILE_SEC) {
 		t = tick.tv_sec;
 		t += tick.tv_usec / 1000000.0;
+	} */
+
+	// This is the implementation using clock_gettime().
+	struct timespec tick = {0, 0};
+
+	clock_gettime(CLOCK_MONOTONIC, &tick);
+
+	if(u == PROPHILE_NSEC) {
+		t = tick.tv_sec * 1000000000.0;
+		t += tick.tv_nsec;
 	}
 
-	else {
-		// TODO: Handle errors better...
+	else if(u == PROPHILE_USEC) {
+		t = tick.tv_sec * 1000000.0;
+		t += tick.tv_nsec / 1000.0;
+	}
+
+	else if(u == PROPHILE_MSEC) {
+		t = tick.tv_sec * 1000.0;
+		t += tick.tv_nsec / 1000000.0;
+	}
+
+	else if(u == PROPHILE_SEC) {
+		t = tick.tv_sec;
+		t += tick.tv_nsec / 1000000000.0;
 	}
 
 #endif

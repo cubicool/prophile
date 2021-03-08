@@ -34,6 +34,8 @@ typedef enum _prophile_opt_t {
 // The default units used internally by Prophile are microseconds (PROPHILE_USEC), as
 // these most closely correspond to the low-level native values of each supported OS.
 // This option will determine what "units" are being indicated with each prophile_tick_t.
+//
+// TODO: Make sure that any corresponding code checks in this same order.
 typedef enum _prophile_unit_t {
 	// Microseconds (1/1000000)
 	PROPHILE_USEC,
