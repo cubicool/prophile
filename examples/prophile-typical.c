@@ -15,6 +15,7 @@ static void main_callback(prophile_callback_data_t* cbd) {
 
 int main(int argc, char** argv) {
 	// prophile_t pro = prophile_create(PROPHILE_DEFAULTS);
+
 	prophile_t pro = prophile_create(
 		PROPHILE_UNITS, PROPHILE_MSEC,
 		PROPHILE_CALLBACK, main_callback,
@@ -33,12 +34,6 @@ int main(int argc, char** argv) {
 
 		printf("RETURNED: %f\n", prophile_stop(pro));
 	}
-
-	// OR...
-	// prophile_tick_t start = prophile_tick(PROPHILE_USEC);
-	// Do work...
-	// prophile_tick_t stop = prophile_tick(PROPHILE_USEC);
-	// Do stuff with start/stop...
 
 	prophile_destroy(pro);
 
