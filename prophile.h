@@ -16,7 +16,7 @@
 extern "C" {
 #endif
 
-// This is our main "context" instance. Most the Prophile will accept this as the
+// This is our main "context" instance. Most the Prophile API will accept this as the
 // first argument, abstracting the nitty-gritty details and improving support for usage
 // in multi-threaded situations.
 typedef struct _prophile_t* prophile_t;
@@ -65,7 +65,7 @@ typedef struct _prophile_callback_data_t {
 	prophile_tick_t stop;
 	const void* data;
 	// TODO: It would probably be really handy to know what "level" of the stack our
-	// measurement is being taken on, particularly when supported for relative timing
+	// measurement is being taken on, particularly when support for relative timing
 	// is added; that is, measurements based on some relationship to the parent and
 	// sibling samples.
 	// size_t index;
