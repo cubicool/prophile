@@ -1,5 +1,15 @@
 // Prophile (cubicool@gmail.com)
 
+// TODO: Define SCOPE (dos and donts)
+// TODO: Should there be a PAUSE?
+// TODO: Throttle? (Try to force FPS)
+// TODO: tick_as(unit_t)
+// TODO: get/set; way to return entire sample? get mode? USE UNION RETURN
+// TODO: Introduce some kind of mutex (and example) to show prophile_t thread support
+// TODO: prophile_value(pro); this means we need to keep LAST diff before stop() deletes it
+// TODO: prophile_start_n/stop_n macro; will wrap code and collect average
+// TODO: inject LD_PRELOAD style to trace functions
+
 #ifndef PROPHILE_H
 #define PROPHILE_H 1
 
@@ -13,21 +23,30 @@
 #endif
 
 #ifdef  __cplusplus
+// TODO: Something here to encourage the use of prophile.hpp!
 extern "C" {
 #endif
 
-// This is our main "context" instance. Most the Prophile API will accept this as the
+// While the API returns a double to the user, the time values used internally are generally
+// uint64_t or uint32_t. There are potential overflow issues in extreme conditions, but nothing that
+// any "typical" use is likely to encounter.
+typedef double prophile_tick_t;
+
+// This is our main "context" instance. Most of the Prophile API will accept this as the
 // first argument, abstracting the nitty-gritty details and improving support for usage
 // in multi-threaded situations.
 typedef struct _prophile_t* prophile_t;
 
-// Options used when creating the prophile_t context.
-typedef enum _prophile_opt_t {
-	PROPHILE_DEFAULTS,
-	PROPHILE_UNITS,
-	PROPHILE_CALLBACK
-	// PROPHILE_CALLBACK_PRINTF
-	// PROPHILE_SAMPLES
+typedef enum {
+	PROPHILE_NULL,
+	PROPHILE_UNIT,
+	PROPHILE_CALLBACK,
+	PROPHILE_START,
+	PROPHILE_STOP,
+	PROPHILE_DURATION,
+	PROPHILE_DATA,
+	PROPHILE_STATUS
+	// TODO: Future...
 	// PROPHILE_INDEX
 } prophile_opt_t;
 
@@ -36,46 +55,29 @@ typedef enum _prophile_opt_t {
 // This option will determine what "units" are being indicated with each prophile_tick_t.
 //
 // TODO: Make sure that any corresponding code checks in this same order.
-typedef enum _prophile_unit_t {
-	// Microseconds (1/1000000)
-	PROPHILE_USEC,
+typedef enum {
 	// Nanoseconds (1/1000000000)
 	PROPHILE_NSEC,
+	// Microseconds (1/1000000)
+	PROPHILE_USEC,
 	// Milliseconds (1/1000)
 	PROPHILE_MSEC,
 	// Seconds
 	PROPHILE_SEC
-	// TODO: PROPHILE_NATIVE
 } prophile_unit_t;
 
-// Currently, a single callback is used for both STARTING and STOPPING a measurement.
-// Perhaps it the future it may make more sense to have them be individually set.
-typedef enum _prophile_callback_mode_t {
-	PROPHILE_START,
-	PROPHILE_STOP
-} prophile_callback_mode_t;
+// TODO: Precisely describe the behavior of when the callback is called and when the START/STOP
+// tick values are ACTUALLY recorded!
+typedef void (*prophile_callback_t)(prophile_t);
 
-// Although the FINAL value is stored in a double, the actual UNITS this value will
-// represent are determined by the prophile_t "unit" option.
-typedef double prophile_tick_t;
+typedef union {
+	prophile_tick_t tick;
+	prophile_opt_t opt;
+	prophile_unit_t unit;
+	prophile_callback_t callback;
 
-// It's easier to pass this entire structure to the prophile_callback_t function than
-// it is to have to specify EACH of the possible fields in the signature.
-typedef struct _prophile_callback_data_t {
-	prophile_callback_mode_t mode;
-	prophile_tick_t start;
-	prophile_tick_t stop;
 	const void* data;
-	// TODO: It would probably be really handy to know what "level" of the stack our
-	// measurement is being taken on, particularly when support for relative timing
-	// is added; that is, measurements based on some relationship to the parent and
-	// sibling samples.
-	// size_t index;
-} prophile_callback_data_t;
-
-// If set on the prophile_t context during creation, the desired callback must match
-// the signature indicated by the prophile_callback_t type.
-typedef void (*prophile_callback_t)(prophile_callback_data_t*);
+} prophile_val_t;
 
 // Standard create/destroy pair for the opaque prophile_t instance.
 //
@@ -94,27 +96,21 @@ PROPHILE_API void prophile_destroy(prophile_t pro);
 PROPHILE_API void prophile_start(prophile_t pro, const void* data);
 PROPHILE_API prophile_tick_t prophile_stop(prophile_t pro);
 
+PROPHILE_API prophile_val_t prophile_get(const prophile_t pro, prophile_opt_t opt);
+PROPHILE_API void prophile_set(prophile_t pro, prophile_opt_t opt, prophile_val_t val);
+
+PROPHILE_API prophile_tick_t prophile_tick(prophile_unit_t unit);
+
+// https://en.wikipedia.org/wiki/Time_Stamp_Counter
+PROPHILE_API prophile_tick_t prophile_tick_rdtsc();
+
 // This is a handy routine that internally implements OS-level, precise "sleeping" for
-// the specified amount of microseconds.
-//
-// TODO: Change the first argument to prophile_unit_t, rather than JUST microseconds.
-PROPHILE_API void prophile_sleep(unsigned int usec);
+// the specified amount of time (using whatever prophile_unit_t is set).
+PROPHILE_API void prophile_sleep(prophile_unit_t unit, prophile_tick_t tick);
 
-// There may be cases where the user doesn't want to be bothered with prophile_t context
-// creation and simply wants an easy, reliable way to fetch timing information from the
-// OS. In those cases, the return value is in units specified in the function argument.
-//
-// You probably won't use this, but, what do I know?
-PROPHILE_API prophile_tick_t prophile_tick(prophile_unit_t u);
-
-// TODO: Find some good way to help output formatting; both with the prophile_unit_t as
-// some string value AND using good printf flags (e.g., "12.6f").
-// PROPHILE_API const char* prophile_units(...)
-// PROPHILE_API void prophile_sprintf(...)
-
-// TODO: For the below to be valid, prophile_tick_t would need to need to know the INITIAL
-// prophile_unit_t; maybe prophile_tick_t should be a structure?
-// PROPHILE_API prophile_tick_t prophile_unit(prophile_unit_t u, prophile_tick_t t);
+// These functions return the string names of the corresponding enumerations.
+PROPHILE_API const char* prophile_opt(prophile_opt_t opt);
+PROPHILE_API const char* prophile_unit(prophile_unit_t unit);
 
 #ifdef  __cplusplus
 }

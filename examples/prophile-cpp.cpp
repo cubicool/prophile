@@ -1,5 +1,10 @@
-#include "prophile.h"
+// vimrun! ./prophile-typical++
 
+#include "prophile.hpp"
+
+#include <cstdio>
+
+#if 0
 #include <stdint.h>
 #include <stdio.h>
 
@@ -12,11 +17,10 @@ static void main_callback(prophile_callback_data_t* cbd) {
 		printf("STOP  [%s]: %f\n", (const char*)(cbd->data), cbd->stop - cbd->start);
 	}
 }
+#endif
 
 int main(int argc, char** argv) {
-	// prophile_t pro = prophile_create(PROPHILE_DEFAULTS);
-
-	prophile_t pro = prophile_create(
+	/* prophile_t pro = prophile_create(
 		PROPHILE_UNITS, PROPHILE_MSEC,
 		PROPHILE_CALLBACK, main_callback,
 		NULL
@@ -35,7 +39,29 @@ int main(int argc, char** argv) {
 		printf("RETURNED: %f\n", prophile_stop(pro));
 	}
 
-	prophile_destroy(pro);
+	prophile_destroy(pro); */
+
+	auto pro = prophile::prophile();
+
+	for(auto i = 0; i < 3; i++) {
+		pro.start("prophile_sleep(100000)");
+		// pro.sleep(100000);
+
+		prophile::sleep(100000);
+
+		for(auto ii = 0; ii < 2; ii++) {
+			pro.start("prophile_sleep(50000)");
+			// pro.sleep(50000);
+
+			prophile::sleep(50000);
+
+			std::printf("RETURNED: %f\n", pro.stop());
+		}
+
+		std::printf("RETURNED: %f\n", pro.stop());
+	}
+
+	std::printf("%f\n", prophile::tick(prophile::unit_t::PROPHILE_MSEC));
 
 	return 0;
 }
