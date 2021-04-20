@@ -5,10 +5,22 @@
 
 #include "prophile.h"
 
+#include <variant>
+
 namespace prophile {
 
 using tick_t = prophile_tick_t;
 using unit_t = prophile_unit_t;
+// using opt_t = prophile_opt_t;
+// using val_t = prophile_val_t;
+
+using val_t = std::variant<
+	prophile_tick_t,
+	prophile_opt_t,
+	prophile_unit_t,
+	prophile_callback_t,
+	const void*
+>;
 
 inline void sleep(unsigned int usec) {
 	prophile_sleep(usec);
@@ -46,7 +58,7 @@ public:
 	// static void sleep(unsigned int usec) {
 	// 	prophile_sleep(usec);
 	// }
-    //
+	//
 	// static tick_t tick(unit_t u) {
 	// 	return prophile_tick(u);
 	// }

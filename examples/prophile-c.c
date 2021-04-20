@@ -4,6 +4,7 @@
 
 #include <stdint.h>
 #include <stdio.h>
+#include <inttypes.h>
 
 #if 0
 	PROPHILE_NULL,
@@ -20,9 +21,9 @@ static void main_callback(prophile_t pro) {
 		"main_callback {\n"
 		" - unit: %s\n"
 		" - callback: %p\n"
-		" - start: %f\n"
-		" - stop: %f\n"
-		" - duration: %f\n"
+		" - start: %" PRIu64 "\n"
+		" - stop: %" PRIu64 "\n"
+		" - duration: %" PRIu64 "\n"
 		" - data: '%s'\n"
 		" - status: %s\n"
 		"}\n",
@@ -58,13 +59,13 @@ static void sleep_for(unsigned int usec) {
 
 	prophile_tick_t stop = prophile_tick(PROPHILE_USEC);
 
-	printf("start    = %f\n", start);
-	printf("stop     = %f\n", stop);
-	printf("duration = %f\n", stop - start);
+	printf("start    = %" PRIu64 "\n", start);
+	printf("stop     = %" PRIu64 "\n", stop);
+	printf("duration = %" PRIu64 "\n", stop - start);
 }
 #endif
 
-int main(int argc, char** argv) {
+int main0(int argc, char** argv) {
 	sleep_for(300000);
 	sleep_for(600000);
 
@@ -118,10 +119,10 @@ int main(int argc, char** argv) {
 			prophile_start(pro, "prophile_sleep(50000)");
 			prophile_sleep(PROPHILE_USEC, 50000);
 
-			printf("delta: %fus\n", prophile_stop(pro));
+			printf("delta: %" PRIu64 "us\n", prophile_stop(pro));
 		}
 
-		printf("delta: %fus\n", prophile_stop(pro));
+		printf("delta: %" PRIu64 "us\n", prophile_stop(pro));
 	}
 #endif
 
@@ -133,10 +134,66 @@ int main(int argc, char** argv) {
 	for(uint32_t i = 0; i < 10; i++) {
 		prophile_tick_t rdtsc1 = prophile_tick_rdtsc();
 
-		printf("rdtsc %u: %f\n", i, rdtsc1 - rdtsc0);
+		printf("rdtsc %u: %" PRIu64 "\n", i, rdtsc1 - rdtsc0);
 
 		rdtsc0 = rdtsc1;
 	}
 
 	return 0;
+}
+
+int main1(int argc, char** argv) {
+	prophile_tick_t start = prophile_tick(PROPHILE_NSEC);
+
+	prophile_sleep(PROPHILE_NSEC, 2300000000);
+
+	prophile_tick_t stop = prophile_tick(PROPHILE_NSEC);
+
+	printf("Slept for: %" PRIu64 "ns\n", stop - start);
+
+	return 0;
+}
+
+#include <time.h>
+#include <errno.h>
+#include <string.h>
+
+int main2(int argc, char** argv) {
+#ifdef _MSC_VER
+	return 0;
+
+#else
+	uint64_t ns = 1500000000;
+
+	struct timespec ts = {
+		.tv_sec = ns / 1000000000,
+		.tv_nsec = ns % 1000000000
+	};
+
+	printf("ns       = %" PRIu64 "\n", ns);
+	printf("tv_sec   = %" PRIu64 "\n", ns / 1000000000);
+	printf("tv_nsec  = %" PRIu64 "\n", ns % 1000000000);
+
+	// prophile_tick_t start = prophile_tick_rdtsc();
+	prophile_tick_t start = prophile_tick(PROPHILE_NSEC);
+
+	if(nanosleep(&ts, NULL)) {
+		printf("Error (%d): %s\n", errno, strerror(errno));
+
+		return 1;
+	}
+
+	// prophile_tick_t stop = prophile_tick_rdtsc();
+	prophile_tick_t stop = prophile_tick(PROPHILE_NSEC);
+
+	printf("start    = %" PRIu64 "\n", start);
+	printf("stop     = %" PRIu64 "\n", stop);
+	printf("duration = %" PRIu64 "\n", stop - start);
+
+	return 0;
+#endif
+}
+
+int main(int argc, char** argv) {
+	return main1(argc, argv);
 }

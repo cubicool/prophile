@@ -22,15 +22,14 @@
 	#define PROPHILE_API
 #endif
 
+#include <stdint.h>
+
 #ifdef  __cplusplus
 // TODO: Something here to encourage the use of prophile.hpp!
 extern "C" {
 #endif
 
-// While the API returns a double to the user, the time values used internally are generally
-// uint64_t or uint32_t. There are potential overflow issues in extreme conditions, but nothing that
-// any "typical" use is likely to encounter.
-typedef double prophile_tick_t;
+typedef uint64_t prophile_tick_t;
 
 // This is our main "context" instance. Most of the Prophile API will accept this as the
 // first argument, abstracting the nitty-gritty details and improving support for usage
@@ -102,6 +101,9 @@ PROPHILE_API void prophile_set(prophile_t pro, prophile_opt_t opt, prophile_val_
 PROPHILE_API prophile_tick_t prophile_tick(prophile_unit_t unit);
 
 // https://en.wikipedia.org/wiki/Time_Stamp_Counter
+//
+// This returns the number of "CPU cycles"; they don't actually correspond directly to any
+// measurement, like nanoseconds.
 PROPHILE_API prophile_tick_t prophile_tick_rdtsc();
 
 // This is a handy routine that internally implements OS-level, precise "sleeping" for

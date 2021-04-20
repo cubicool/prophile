@@ -11,13 +11,22 @@
 
 #include <stdlib.h>
 #include <stdarg.h>
-#include <stdint.h>
 
 #ifdef _MSC_VER
 #include <windows.h>
 #else
 #include <time.h>
 #include <unistd.h>
+#endif
+
+#if 1
+#define PROPHILE_NS 1000000000
+#define PROPHILE_US 1000000
+#define PROPHILE_MS 1000
+#else
+#define PROPHILE_NS 1e9
+#define PROPHILE_US 1e6
+#define PROPHILE_MS 1e3
 #endif
 
 typedef struct _prophile_timer_t* prophile_timer_t;
@@ -135,7 +144,7 @@ void prophile_set(prophile_t pro, prophile_opt_t opt, prophile_val_t val) {
 
 prophile_tick_t prophile_tick_rdtsc() {
 #if defined _WIN32 || defined __CYGWIN__
-	return int64_t(__rdtsc());
+	return __rdtsc();
 
 #elif defined __i386 || defined _M_IX86
 	uint32_t eax;
@@ -151,10 +160,10 @@ prophile_tick_t prophile_tick_rdtsc() {
 
 	asm volatile("rdtsc" : "=a" (rax), "=d" (rdx));
 
-	return (int64_t)((rdx << 32) + rax);
+	return (uint64_t)((rdx << 32) + rax);
 
 #else
-	#error "prophile_tick_rdtsc undefined for this platform"
+	#error "prophile_tick_rdtsc unsupported"
 #endif
 }
 
@@ -171,65 +180,48 @@ prophile_tick_t prophile_tick(prophile_unit_t u) {
 
 	QueryPerformanceCounter(&tick);
 
-	if(u == PROPHILE_NSEC) t = tick.QuadPart * (1.0e9 / (prophile_tick_t)(FREQ.QuadPart));
+	t = tick.QuadPart;
 
-	else if(u == PROPHILE_USEC) t = tick.QuadPart * (1.0e6 / (prophile_tick_t)(FREQ.QuadPart));
+	if(u == PROPHILE_NSEC) t *= PROPHILE_NS / FREQ.QuadPart;
 
-	else if(u == PROPHILE_MSEC) t = tick.QuadPart * (1.0e3 / (prophile_tick_t)(FREQ.QuadPart));
+	else if(u == PROPHILE_USEC) t *= PROPHILE_US / FREQ.QuadPart;
 
-	else if(u == PROPHILE_SEC) t = tick.QuadPart * (1.0 / (prophile_tick_t)(FREQ.QuadPart));
+	else if(u == PROPHILE_MSEC) t *= PROPHILE_MS / FREQ.QuadPart;
+
+	else if(u == PROPHILE_SEC) t *= FREQ.QuadPart;
 
 #else
-	// #if defined(_POSIX_TIMERS) && (_POSIX_TIMERS > 0) && defined(_POSIX_MONOTONIC_CLOCK)
-
-	/* // This is the implementation using gettimeofday().
-	struct timeval tick = {0, 0};
-
-	gettimeofday(&tick, NULL);
-
-	if(u == PROPHILE_NSEC) {
-		t = tick.tv_sec * 1000000000.0;
-		t += tick.tv_usec * 1000.0;
-	}
-
-	else if(u == PROPHILE_USEC) {
-		t = tick.tv_sec * 1000000.0;
-		t += tick.tv_usec;
-	}
-
-	else if(u == PROPHILE_MSEC) {
-		t = tick.tv_sec * 1000.0;
-		t += tick.tv_usec / 1000.0;
-	}
-
-	else if(u == PROPHILE_SEC) {
-		t = tick.tv_sec;
-		t += tick.tv_usec / 1000000.0;
-	} */
-
 	// This is the implementation using clock_gettime().
 	struct timespec tick = {0, 0};
 
 	clock_gettime(CLOCK_MONOTONIC, &tick);
 
-	if(u == PROPHILE_NSEC) t = (tick.tv_sec * 1000000000.0) + tick.tv_nsec;
+	if(u == PROPHILE_NSEC) t = (tick.tv_sec * PROPHILE_NS) + tick.tv_nsec;
 
-	else if(u == PROPHILE_USEC) t = (tick.tv_sec * 1000000.0) + (tick.tv_nsec / 1000.0);
+	else if(u == PROPHILE_USEC) t = (tick.tv_sec * PROPHILE_US) + (tick.tv_nsec / PROPHILE_MS);
 
-	else if(u == PROPHILE_MSEC) t = (tick.tv_sec * 1000.0) + (tick.tv_nsec / 1000000.0);
+	else if(u == PROPHILE_MSEC) t = (tick.tv_sec * PROPHILE_MS) + (tick.tv_nsec / PROPHILE_US);
 
-	else if(u == PROPHILE_SEC) t = tick.tv_sec + (tick.tv_nsec / 1000000000.0);
+	else if(u == PROPHILE_SEC) t = tick.tv_sec + (tick.tv_nsec / PROPHILE_NS);
 #endif
 
 	return t;
 }
 
 // https://docs.microsoft.com/en-us/windows/win32/api/synchapi/nf-synchapi-setwaitabletimer
-void prophile_sleep(prophile_unit_t unit, prophile_tick_t usec) {
+void prophile_sleep(prophile_unit_t unit, prophile_tick_t nsec) {
+	prophile_tick_t ns = nsec;
+
+	if(unit == PROPHILE_USEC) ns *= PROPHILE_MS;
+
+	else if(unit == PROPHILE_MSEC) ns *= PROPHILE_US;
+
+	else if(unit == PROPHILE_SEC) ns *= PROPHILE_NS;
+
 #ifdef _MSC_VER
 	// The "due" units are 100ns apiece; the negative value indicates a relative future offset time,
 	// rather than an absolute (positive) time.
-	LARGE_INTEGER due = { .QuadPart = -(10 * (__int64)(usec)) };
+	LARGE_INTEGER due = { .QuadPart = -((__int64)(nsec / 100)) };
 	HANDLE timer = CreateWaitableTimer(NULL, TRUE, NULL);
 
 	SetWaitableTimer(timer, &due, 0, NULL, NULL, FALSE);
@@ -237,9 +229,14 @@ void prophile_sleep(prophile_unit_t unit, prophile_tick_t usec) {
 	CloseHandle(timer);
 
 #else
-	// TODO: Convert to using nanosleep() instead, as usleep() was rendered
-	// obsolete in POSIX-1.2001.
-	usleep(usec);
+	struct timespec ts = {
+		.tv_sec = ns / PROPHILE_NS,
+		.tv_nsec = ns % PROPHILE_NS
+	};
+
+	if(nanosleep(&ts, NULL)) {
+		// TODO: Handle the error situation using the second argument to nanosleep().
+	}
 #endif
 }
 
