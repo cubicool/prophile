@@ -1,9 +1,11 @@
 # Prophile
 
-Prophile is a small (single header / single source) C library with an
+Prophile is a small (single header / single source) C library using an
 easy--**but robust**--API for profiling and measuring code execution time. It
 has OS-level timing and querying support for Windows, as well as any environment
-supporting the C function *gettimeofday*.
+supporting the C function *clock_gettime*. Alternatively, it can be configured
+to use the [RDTSC](https://en.wikipedia.org/wiki/Time_Stamp_Counter) assembly
+instruction, if supported.
 
 ## Compiling / Integrating
 
