@@ -9,7 +9,7 @@ instruction, if supported.
 
 ## Compiling / Integrating
 
-**TODO**: Finish adding support to support including this project as a "git
+**TODO**: Finish adding support to facilitate including this project as a "git
 submodule", and subsequently being used with the CMake *add_subdirectory*
 command.
 
@@ -25,14 +25,49 @@ library, including the parts that make it fun and unique. :)
 
 ### (Standard Usage)
 
+Standard usage will generally look something like the following (**NOTE:** this
+doesn't demonstrate handling the returned duration from *prophile_stop*, using
+*callbacks*, and a whole host of other things):
+
 ```
-// TODO: ...
+prophile_t p = prophile_create(PROPHILE_USEC);
+
+prophile_start(p, "foo"); {
+    // ...
+
+    prophile_start(p, "bar"); {
+        // ...
+
+        prophile_start(p, "baz0");
+        prophile_stop(p);
+
+        // ...
+
+        prophile_start(p, "baz1");
+        prophile_stop(p);
+    }
+
+    prophile_stop(p);
+}
+
+prophile_stop(p);
+
+prophile_destroy(p);
 ```
 
 ### (Questionable Usage)
 
+For those who insist, you could simply calculate the durations on your own. But
+then, why are you using a library?
+
 ```
-// TODO: ...
+prophile_tick_t start = prophile_tick(PROPHILE_NSEC);
+// ...
+prophile_tick_t stop = prophile_tick(PROPHILE_NSEC);
+
+prophile_tick_t start = prophile_tick_rdtsc();
+// ...
+prophile_tick_t stop = prophile_tick_rdtsc();
 ```
 
 ## TODO
