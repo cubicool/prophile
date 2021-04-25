@@ -6,16 +6,6 @@
 #include <stdio.h>
 #include <inttypes.h>
 
-#if 0
-	PROPHILE_NULL,
-	PROPHILE_UNIT,
-	PROPHILE_CALLBACK,
-	PROPHILE_START,
-	PROPHILE_STOP,
-	PROPHILE_DATA,
-	PROPHILE_STATUS
-#endif
-
 static void main_callback(prophile_t pro) {
 	printf(
 		"main_callback {\n"
@@ -119,10 +109,10 @@ int main0(int argc, char** argv) {
 			prophile_start(pro, "prophile_sleep(50000)");
 			prophile_sleep(PROPHILE_USEC, 50000);
 
-			printf("delta: %" PRIu64 "us\n", prophile_stop(pro));
+			printf("duration: %" PRIu64 "us\n", prophile_stop(pro));
 		}
 
-		printf("delta: %" PRIu64 "us\n", prophile_stop(pro));
+		printf("duration: %" PRIu64 "us\n", prophile_stop(pro));
 	}
 #endif
 
@@ -174,7 +164,6 @@ int main2(int argc, char** argv) {
 	printf("tv_sec   = %" PRIu64 "\n", ns / 1000000000);
 	printf("tv_nsec  = %" PRIu64 "\n", ns % 1000000000);
 
-	// prophile_tick_t start = prophile_tick_rdtsc();
 	prophile_tick_t start = prophile_tick(PROPHILE_NSEC);
 
 	if(nanosleep(&ts, NULL)) {
@@ -183,7 +172,6 @@ int main2(int argc, char** argv) {
 		return 1;
 	}
 
-	// prophile_tick_t stop = prophile_tick_rdtsc();
 	prophile_tick_t stop = prophile_tick(PROPHILE_NSEC);
 
 	printf("start    = %" PRIu64 "\n", start);
@@ -194,6 +182,21 @@ int main2(int argc, char** argv) {
 #endif
 }
 
+int main4(int argc, char** argv) {
+	prophile_t pro = prophile_create(PROPHILE_NULL);
+
+	prophile_start(pro, "foo");
+	prophile_sleep(PROPHILE_MSEC, 500);
+	prophile_tick_t t = prophile_stop(pro);
+
+	printf("%" PRIu64 "\n", prophile_get(pro, PROPHILE_DURATION).tick);
+	printf("%" PRIu64 "\n", t);
+
+	prophile_destroy(pro);
+
+	return 0;
+}
+
 int main(int argc, char** argv) {
-	return main1(argc, argv);
+	return main4(argc, argv);
 }

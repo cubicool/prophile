@@ -1,21 +1,10 @@
 // Prophile (cubicool@gmail.com)
 
-// TODO: Define SCOPE (dos and donts)
-// TODO: Should there be a PAUSE?
-// TODO: Throttle? (Try to force FPS)
-// TODO: tick_as(unit_t)
-// TODO: get/set; way to return entire sample? get mode? USE UNION RETURN
-// TODO: Introduce some kind of mutex (and example) to show prophile_t thread support
-// TODO: prophile_value(pro); this means we need to keep LAST diff before stop() deletes it
-// TODO: prophile_start_n/stop_n macro; will wrap code and collect average
-// TODO: inject LD_PRELOAD style to trace functions
-
 #ifndef PROPHILE_H
 #define PROPHILE_H 1
 
 #if defined(_MSC_VER)
 	#define PROPHILE_API
-	// TODO: When do these REALLY need to be set anymore?
 	// #define PROPHILE_API __declspec(dllimport)
 	// #define PROPHILE_API __declspec(dllexport)
 #else
@@ -23,9 +12,9 @@
 #endif
 
 #include <stdint.h>
+#include <stddef.h>
 
 #ifdef  __cplusplus
-// TODO: Something here to encourage the use of prophile.hpp!
 extern "C" {
 #endif
 
@@ -43,17 +32,14 @@ typedef enum {
 	PROPHILE_START,
 	PROPHILE_STOP,
 	PROPHILE_DURATION,
+	PROPHILE_INDEX,
 	PROPHILE_DATA,
 	PROPHILE_STATUS
-	// TODO: Future...
-	// PROPHILE_INDEX
 } prophile_opt_t;
 
 // The default units used internally by Prophile are microseconds (PROPHILE_USEC), as
 // these most closely correspond to the low-level native values of each supported OS.
 // This option will determine what "units" are being indicated with each prophile_tick_t.
-//
-// TODO: Make sure that any corresponding code checks in this same order.
 typedef enum {
 	// Nanoseconds (1/1000000000)
 	PROPHILE_NSEC,
@@ -74,6 +60,8 @@ typedef union {
 	prophile_opt_t opt;
 	prophile_unit_t unit;
 	prophile_callback_t callback;
+
+	size_t index;
 
 	const void* data;
 } prophile_val_t;
@@ -98,12 +86,28 @@ PROPHILE_API prophile_tick_t prophile_stop(prophile_t pro);
 PROPHILE_API prophile_val_t prophile_get(const prophile_t pro, prophile_opt_t opt);
 PROPHILE_API void prophile_set(prophile_t pro, prophile_opt_t opt, prophile_val_t val);
 
+#define prophile_get_unit(pro) prophile_get(pro, PROPHILE_UNIT).unit
+#define prophile_get_callback(pro) prophile_get(pro, PROPHILE_CALLBACK).callback
+#define prophile_get_start(pro) prophile_get(pro, PROPHILE_START).tick
+#define prophile_get_stop(pro) prophile_get(pro, PROPHILE_STOP).tick
+#define prophile_get_duration(pro) prophile_get(pro, PROPHILE_DURATION).tick
+#define prophile_get_index(pro) prophile_get(pro, PROPHILE_INDEX).index
+#define prophile_get_data(pro) prophile_get(pro, PROPHILE_DATA).data
+#define prophile_get_status(pro) prophile_get(pro, PROPHILE_STATUS).opt
+
+#define prophile_set_unit(pro, u) prophile_set(pro, PROPHILE_UNIT, {.unit = u})
+#define prophile_set_callback(pro, cb) prophile_set(pro, PROPHILE_CALLBACK, {.callback = cb})
+#define prophile_set_data(pro) prophile_set(pro, PROPHILE_DATA, {.data = d})
+
 PROPHILE_API prophile_tick_t prophile_tick(prophile_unit_t unit);
 
 // https://en.wikipedia.org/wiki/Time_Stamp_Counter
 //
 // This returns the number of "CPU cycles"; they don't actually correspond directly to any
-// measurement, like nanoseconds.
+// measurement, like nanoseconds. You can divide this number by your CPU frequency (MHz) to get
+// something sensible.
+//
+// TODO: Should there be an option "hz" argument? Perhaps some way to query it?
 PROPHILE_API prophile_tick_t prophile_tick_rdtsc();
 
 // This is a handy routine that internally implements OS-level, precise "sleeping" for

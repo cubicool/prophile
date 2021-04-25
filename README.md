@@ -34,3 +34,13 @@ library, including the parts that make it fun and unique. :)
 ```
 // TODO: ...
 ```
+
+## TODO
+
+- [ ] Document and define the scope and intentions of the library.
+- [ ] Should there be a PAUSE feature?
+- [ ] Introduce some kind of mutex mechanism.
+- [ ] Add additional LD_PRELOAD style injection support.
+- [ ] Determine when \_\_declspec is needed.
+- [ ] Use [STB](https://github.com/nothings/stb) if internal data management
+  gets too complicated.

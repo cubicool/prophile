@@ -2,15 +2,13 @@
 //
 // http://www.songho.ca/misc/timer/timer.html
 // https://gist.github.com/ngryman/6482577
-//
-// TODO: Investigate using the following instead:
-//
-// https://raw.githubusercontent.com/nothings/stb/master/stb_ds.h
+// https://github.com/wolfpld/tracy
 
 #include "prophile.h"
 
 #include <stdlib.h>
 #include <stdarg.h>
+#include <string.h>
 
 #ifdef _MSC_VER
 #include <windows.h>
@@ -19,15 +17,9 @@
 #include <unistd.h>
 #endif
 
-#if 1
 #define PROPHILE_NS 1000000000
 #define PROPHILE_US 1000000
 #define PROPHILE_MS 1000
-#else
-#define PROPHILE_NS 1e9
-#define PROPHILE_US 1e6
-#define PROPHILE_MS 1e3
-#endif
 
 typedef struct _prophile_timer_t* prophile_timer_t;
 
@@ -36,6 +28,7 @@ struct _prophile_timer_t {
 	prophile_tick_t stop;
 	prophile_timer_t next;
 
+	size_t index;
 	const void* data;
 };
 
@@ -43,10 +36,14 @@ struct _prophile_t {
 	prophile_unit_t unit;
 	prophile_callback_t callback;
 	prophile_timer_t timer;
+
+	struct _prophile_timer_t last;
+
+	size_t index;
 };
 
 prophile_t prophile_create(prophile_opt_t opt, ...) {
-	prophile_t pro = (prophile_t)(calloc(1, sizeof(struct _prophile_t)));
+	prophile_t pro = calloc(1, sizeof(struct _prophile_t));
 	prophile_opt_t o = opt;
 
 	va_list args;
@@ -81,17 +78,19 @@ void prophile_destroy(prophile_t pro) {
 }
 
 void prophile_start(prophile_t pro, const void* data) {
-	prophile_timer_t t = (prophile_timer_t)(calloc(1, sizeof(struct _prophile_timer_t)));
+	prophile_timer_t t = calloc(1, sizeof(struct _prophile_timer_t));
 
 	t->next = pro->timer;
+	t->index = pro->index;
 	t->data = data;
 
 	pro->timer = t;
 
-	// Set the start immediately before calling the callback.
+	if(pro->callback) pro->callback(pro);
+
 	t->start = prophile_tick(pro->unit);
 
-	if(pro->callback) pro->callback(pro);
+	pro->index++;
 }
 
 prophile_tick_t prophile_stop(prophile_t pro) {
@@ -106,34 +105,37 @@ prophile_tick_t prophile_stop(prophile_t pro) {
 
 	pro->timer = pro->timer->next;
 
+	memcpy(&pro->last, t, sizeof(struct _prophile_timer_t));
+
 	free(t);
+
+	pro->index--;
 
 	return r;
 }
 
 prophile_val_t prophile_get(const prophile_t pro, prophile_opt_t o) {
 	prophile_val_t v = { .data = NULL };
+	prophile_timer_t t = pro->index ? pro->timer : &pro->last;
 
 	if(o == PROPHILE_UNIT) v.unit = pro->unit;
 
 	else if(o == PROPHILE_CALLBACK) v.callback = pro->callback;
 
-	else if(o == PROPHILE_START && pro->timer) v.tick = pro->timer->start;
+	else if(o == PROPHILE_START) v.tick = t->start;
 
-	else if(o == PROPHILE_STOP && pro->timer) v.tick = pro->timer->stop;
+	else if(o == PROPHILE_STOP) v.tick = t->stop;
 
-	else if(o == PROPHILE_DURATION && pro->timer && pro->timer->stop) {
-		v.tick = pro->timer->stop - pro->timer->start;
-	}
+	else if(o == PROPHILE_DURATION && t->stop) v.tick = t->stop - t->start;
 
-	else if(o == PROPHILE_DATA && pro->timer) v.data = pro->timer->data;
+	else if(o == PROPHILE_INDEX) v.index = pro->index;
+
+	else if(o == PROPHILE_DATA) v.data = t->data;
 
 	else if(o == PROPHILE_STATUS) {
-		v.opt = PROPHILE_NULL;
+		if(t->stop) v.opt = PROPHILE_STOP;
 
-		if(pro->timer && !pro->timer->stop) v.opt = PROPHILE_START;
-
-		else v.opt = PROPHILE_STOP;
+		else v.opt = PROPHILE_START;
 	}
 
 	return v;
@@ -250,6 +252,8 @@ const char* prophile_opt(prophile_opt_t o) {
 	else if(o == PROPHILE_STOP) return "PROPHILE_STOP";
 
 	else if(o == PROPHILE_DURATION) return "PROPHILE_DURATION";
+
+	else if(o == PROPHILE_INDEX) return "PROPHILE_INDEX";
 
 	else if(o == PROPHILE_DATA) return "PROPHILE_DATA";
 
