@@ -37,7 +37,7 @@ typedef enum {
 	PROPHILE_STATUS
 } prophile_opt_t;
 
-// The default units used internally by Prophile are microseconds (PROPHILE_USEC), as
+// The default units used internally by Prophile are nanoseconds (PROPHILE_NSEC), as
 // these most closely correspond to the low-level native values of each supported OS.
 // This option will determine what "units" are being indicated with each prophile_tick_t.
 typedef enum {
@@ -63,7 +63,7 @@ typedef union {
 
 	size_t index;
 
-	const void* data;
+	void* data;
 } prophile_val_t;
 
 // Standard create/destroy pair for the opaque prophile_t instance.
@@ -80,7 +80,7 @@ PROPHILE_API void prophile_destroy(prophile_t pro);
 //
 // The "data" argument can be any kind of closure data the user requires; from a simple
 // string to something more complex. NOTE: The caller manages the memory!
-PROPHILE_API void prophile_start(prophile_t pro, const void* data);
+PROPHILE_API void prophile_start(prophile_t pro, void* data);
 PROPHILE_API prophile_tick_t prophile_stop(prophile_t pro);
 
 PROPHILE_API prophile_val_t prophile_get(const prophile_t pro, prophile_opt_t opt);
@@ -111,7 +111,7 @@ PROPHILE_API prophile_tick_t prophile_tick(prophile_unit_t unit);
 PROPHILE_API prophile_tick_t prophile_tick_rdtsc();
 
 // This is a handy routine that internally implements OS-level, precise "sleeping" for
-// the specified amount of time (using whatever prophile_unit_t is set).
+// the specified amount of time (in the supplied units).
 PROPHILE_API void prophile_sleep(prophile_unit_t unit, prophile_tick_t tick);
 
 // These functions return the string names of the corresponding enumerations.
