@@ -29,7 +29,7 @@ struct _prophile_timer_t {
 	prophile_timer_t next;
 
 	size_t index;
-	const void* data;
+	void* data;
 };
 
 struct _prophile_t {
@@ -77,7 +77,7 @@ void prophile_destroy(prophile_t pro) {
 	free(pro);
 }
 
-void prophile_start(prophile_t pro, const void* data) {
+void prophile_start(prophile_t pro, void* data) {
 	prophile_timer_t t = calloc(1, sizeof(struct _prophile_timer_t));
 
 	t->next = pro->timer;

@@ -20,6 +20,9 @@ extern "C" {
 
 typedef uint64_t prophile_tick_t;
 
+// TODO: Add MUCH better formatting support (prophile_fmt, prophile_unit2, etc...)
+#define PROPHILE_FMT "%" PRIu64
+
 // This is our main "context" instance. Most of the Prophile API will accept this as the
 // first argument, abstracting the nitty-gritty details and improving support for usage
 // in multi-threaded situations.

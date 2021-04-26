@@ -1,8 +1,9 @@
-// vimrun! ./prophile-typical++
+// vimrun! ./prophile-cpp
 
 #include "prophile.hpp"
 
 #include <cstdio>
+#include <cinttypes>
 
 #if 0
 #include <stdint.h>
@@ -41,19 +42,19 @@ int main(int argc, char** argv) {
 
 	prophile_destroy(pro); */
 
-	auto pro = prophile::prophile();
+	/* auto pro = prophile::Prophile();
 
 	for(auto i = 0; i < 3; i++) {
 		pro.start("prophile_sleep(100000)");
 		// pro.sleep(100000);
 
-		prophile::sleep(100000);
+		prophile::sleep(prophile::Unit::USEC, 100000);
 
 		for(auto ii = 0; ii < 2; ii++) {
 			pro.start("prophile_sleep(50000)");
 			// pro.sleep(50000);
 
-			prophile::sleep(50000);
+			prophile::sleep(prophile::Unit::USEC, 50000);
 
 			std::printf("RETURNED: %f\n", pro.stop());
 		}
@@ -61,7 +62,21 @@ int main(int argc, char** argv) {
 		std::printf("RETURNED: %f\n", pro.stop());
 	}
 
-	std::printf("%f\n", prophile::tick(prophile::unit_t::PROPHILE_MSEC));
+	// std::printf("%f\n", prophile::tick(prophile::unit_t::PROPHILE_MSEC)); */
+
+	auto p = prophile::Prophile();
+
+	p.start();
+
+	prophile::sleep(prophile::Unit::NSEC, 500000000);
+
+	std::printf("%s\n", prophile_unit(prophile_get_unit(p.ptr())));
+	std::printf(PROPHILE_FMT "\n", p.stop());
+
+	std::printf(PROPHILE_FMT "\n", prophile::tick(prophile::Unit::NSEC));
+	std::printf(PROPHILE_FMT "\n", prophile::tick(prophile::Unit::USEC));
+	std::printf(PROPHILE_FMT "\n", prophile::tick(prophile::Unit::MSEC));
+	std::printf(PROPHILE_FMT "\n", prophile::tick(prophile::Unit::SEC));
 
 	return 0;
 }
